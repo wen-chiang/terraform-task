@@ -61,6 +61,8 @@ variable "module_settings" {
     tags = optional(any)
     target_groups = optional(any)
     vpc_id = optional(any)
+    certificate_arn = optional(any)
+    listener_port = optional(any)
   })
   description = "Module-specific settings."
   default     = {}

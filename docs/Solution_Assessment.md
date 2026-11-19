@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-I believe I can **successfully solve the PCI-DSS compliance issue** within the 5-day audit deadline by creating an automated, infrastructure-as-code solution that addresses the specific compliance gaps.
+I believe I can **successfully solve the PCI-DSS compliance issue** by creating an automated, infrastructure-as-code solution that addresses the specific compliance gaps.
 
 ---
 
@@ -14,7 +14,6 @@ Company: Payment Provider startup
 Goal: Pass PCI-DSS certification
 Problem: Points 1.3.1 and 1.3.2 not properly addressed
 Current State: Manual infrastructure, no automation
-Timeline: 5 days until external audit
 ```
 
 ### PCI-DSS Points 1.3.1 & 1.3.2 Address
@@ -159,19 +158,18 @@ Terraform Infrastructure as Code:
 
 ```
 Current Manual Situation:
-   Day 1: Infrastructure manually recreated
-   Day 2: Configuration applied manually
-   Day 3: Security groups configured manually
-   Day 4: Testing
-   Day 5: AUDIT START - Not ready!
+   Infrastructure recreated manually
+   Configuration applied manually
+   Security groups configured manually
+   Testing completed manually
+   Audit preparation may remain incomplete
 
 With Terraform Solution:
-   Day 1: Run terraform apply (30 min)
-   Day 1: Infrastructure fully deployed
-   Day 2: Testing and validation
-   Day 3: Import manual resources (optional)
-   Day 4: Final audit prep
-   Day 5: AUDIT - Ready!
+   Run terraform apply
+   Infrastructure deployed from configuration
+   Testing and validation can be completed consistently
+   Existing manual resources can be imported when needed
+   Audit documentation is available
 ```
 
 **Benefits:**
@@ -184,7 +182,7 @@ With Terraform Solution:
 
 ## Detailed Implementation Plan
 
-### Phase 1: Create Root Terraform Configuration (Days 1-2)
+### Phase 1: Create Root Terraform Configuration
 
 **What I will create:**
 
@@ -219,11 +217,9 @@ main.tf
 
 **Output files:** 6 root files + 5 modules = Complete infrastructure
 
-**Timeline:** 2 days
-
 ---
 
-### Phase 2: Configure for Your Environment (Day 3)
+### Phase 2: Configure for Your Environment
 
 **What I will configure:**
 
@@ -243,11 +239,9 @@ terraform.tfvars
 └── Other environment-specific values
 ```
 
-**Timeline:** 1 day
-
 ---
 
-### Phase 3: Import Existing Manual Resources (Day 4)
+### Phase 3: Import Existing Manual Resources
 
 **What I will do:**
 
@@ -267,18 +261,15 @@ IF existing manual infrastructure exists:
 Result: All manual resources now managed by Terraform
 ```
 
-**Timeline:** 1-2 hours
-
 **Alternative (if no manual resources):**
 ```
 Run: terraform apply
 Result: Entire new infrastructure deployed
-Timeline:** 30 minutes
 ```
 
 ---
 
-### Phase 4: Validation & Audit Preparation (Day 5)
+### Phase 4: Validation & Audit Preparation
 
 **What I will verify:**
 
@@ -306,8 +297,6 @@ Timeline:** 30 minutes
    - Architecture diagram created
    - Compliance mapping document prepared
 ```
-
-**Timeline:** 1 day
 
 ---
 
@@ -436,7 +425,7 @@ db_egress_rules = [{
 ✅ **Clear Requirements:** Task explicitly states what needs to be built  
 ✅ **Standard Architecture:** 3-tier architecture is proven for PCI-DSS  
 ✅ **Available Tools:** Terraform modules already created and tested  
-✅ **Realistic Timeline:** 2-3 days to code, 1-2 days to configure/import, 1 day to test  
+✅ **Manageable Scope:** Code, environment values, imports, and testing are clearly separated
 ✅ **Audit-Ready Approach:** Infrastructure as code is auditor-friendly  
 ✅ **No External Dependencies:** Everything within AWS scope  
 
@@ -451,7 +440,7 @@ db_egress_rules = [{
 
 ---
 
-## Why This Approach Is Best For 5-Day Deadline
+## Why This Approach Is Best
 
 ### Comparison: Manual vs Terraform
 
@@ -481,7 +470,7 @@ db_egress_rules = [{
 | Infrastructure automated | ✅ YES | Terraform code handles everything |
 | Repeatable deployment | ✅ YES | terraform apply creates all resources |
 | Audit-ready | ✅ YES | Code + documentation + diagram |
-| Within 5-day deadline | ✅ YES | 2-3 days to implement, buffer for testing |
+| Timely implementation | ✅ YES | Small scope with clear implementation phases |
 | Diagram provided | ✅ YES | Will create visual architecture |
 | Import option available | ✅ YES | Can import manual resources |
 
@@ -499,7 +488,7 @@ db_egress_rules = [{
 
 ### Timeline Feasibility
 
-**Very achievable in 5 days.** Most work done in days 1-3, days 4-5 reserved for testing and audit prep.
+The Terraform configuration can be deployed, tested, and prepared for audit efficiently once the environment values and existing resource IDs are available.
 
 ### Audit Readiness
 
@@ -515,7 +504,7 @@ db_egress_rules = [{
 2. ✅ Proven solution pattern (3-tier architecture)
 3. ✅ Available tools (Terraform modules)
 4. ✅ Realistic scope (5 essential modules)
-5. ✅ Achievable timeline (5 days)
+5. ✅ Manageable implementation scope
 6. ✅ Audit-friendly approach (IaC)
 
 ---
@@ -527,6 +516,6 @@ I'm ready to:
 2. ✅ Configure 5 modules for PCI-DSS compliance
 3. ✅ Create infrastructure diagram
 4. ✅ Prepare audit documentation
-5. ✅ Build solution within 5-day timeline
+5. ✅ Build the complete solution
 
 **Let's do this! 🚀**

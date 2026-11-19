@@ -124,15 +124,26 @@ module "security_groups" {
   vpc_id        = module.vpc.vpc_id
   
   # ALB inbound rules
-  app_ingress_rules = [
+  alb_ingress_rules = [
     {
       from_port   = 443
       to_port     = 443
       protocol    = "tcp"
-      cidr_block  = "0.0.0.0/0"
-      description = "HTTPS from internet"
+      cidr_block  = "203.0.113.5/32"
+      description = "HTTPS from an approved source"
     }
   ]
+
+  app_ingress_from_alb = [
+    {
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+      description = "HTTP application traffic from ALB"
+    }
+  ]
+
+  app_ingress_rules = []
   
   # Database port
   db_port = 3306

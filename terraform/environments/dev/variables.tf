@@ -1,4 +1,4 @@
-﻿# AWS Configuration
+# AWS Configuration
 variable "aws_region" {
   type        = string
   description = "AWS region for resources"
@@ -100,24 +100,31 @@ variable "availability_zones" {
 variable "authorized_alb_cidrs" {
   type        = list(string)
   description = "List of authorized IPs/CIDRs allowed to access ALB (finite list for PCI-DSS)"
-  default = [
-    # Example: Add your authorized IPs here
-    # "203.0.113.0/32",    # Your office IP
-    # "198.51.100.0/24",   # VPN subnet
-    "0.0.0.0/0"  # Placeholder - CHANGE THIS to restricted IPs before production
-  ]
+  default     = []
+  validation {
+    condition     = length(var.authorized_alb_cidrs) > 0 && !contains(var.authorized_alb_cidrs, "0.0.0.0/0")
+    error_message = "authorized_alb_cidrs must contain at least one finite source and cannot include 0.0.0.0/0."
+  }
 }
 
 variable "secureweb_egress_cidr" {
   type        = string
   description = "CIDR block for secureweb.com (app needs to reach this)"
-  default     = "0.0.0.0/0"  # Placeholder - Replace with actual secureweb.com IP range
+  default     = ""
+  validation {
+    condition     = var.secureweb_egress_cidr != "" && var.secureweb_egress_cidr != "0.0.0.0/0"
+    error_message = "secureweb_egress_cidr must be an approved finite CIDR."
+  }
 }
 
 variable "repository_egress_cidr" {
   type        = string
   description = "CIDR block for repository.example.com (for package installation)"
-  default     = "0.0.0.0/0"  # Placeholder - Replace with actual repository IP range
+  default     = ""
+  validation {
+    condition     = var.repository_egress_cidr != "" && var.repository_egress_cidr != "0.0.0.0/0"
+    error_message = "repository_egress_cidr must be an approved finite CIDR."
+  }
 }
 
 # EC2 Configuration
@@ -136,13 +143,13 @@ variable "db_instance_type" {
 variable "app_ami_id" {
   type        = string
   description = "AMI ID for application server (Amazon Linux 2)"
-  default     = ""  # Will use latest Amazon Linux 2 if empty
+  default     = "" # Will use latest Amazon Linux 2 if empty
 }
 
 variable "db_ami_id" {
   type        = string
   description = "AMI ID for database server (Amazon Linux 2)"
-  default     = ""  # Will use latest Amazon Linux 2 if empty
+  default     = "" # Will use latest Amazon Linux 2 if empty
 }
 
 # Auto Scaling Configuration
@@ -168,7 +175,11 @@ variable "asg_desired_capacity" {
 variable "ssl_certificate_arn" {
   type        = string
   description = "ARN of existing SSL certificate for ALB"
-  default     = ""  # Optional: Provide when certificate is ready
+  default     = "" # Optional: Provide when certificate is ready
+  validation {
+    condition     = var.ssl_certificate_arn != ""
+    error_message = "ssl_certificate_arn must be set to an ACM certificate ARN."
+  }
 }
 
 variable "alb_internal" {

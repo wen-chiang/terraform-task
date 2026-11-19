@@ -1,4 +1,4 @@
-﻿# ============================================================================
+# ============================================================================
 # PCI-DSS Development Environment - Terraform Variables
 # ============================================================================
 # 
@@ -38,11 +38,11 @@ tags = {
 # NETWORK CONFIGURATION
 # ============================================================================
 
-vpc_cidr             = "10.0.0.0/16"
-public_subnet_cidr   = "10.0.1.0/24"      # ALB subnet (public)
-app_subnet_cidr      = "10.0.10.0/24"     # Application subnet (private)
-db_subnet_cidr       = "10.0.20.0/24"     # Database subnet (private)
-availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
+vpc_cidr           = "10.0.0.0/16"
+public_subnet_cidr = "10.0.1.0/24"  # ALB subnet (public)
+app_subnet_cidr    = "10.0.10.0/24" # Application subnet (private)
+db_subnet_cidr     = "10.0.20.0/24" # Database subnet (private)
+availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
 
 # ============================================================================
 # SECURITY CONFIGURATION - PCI-DSS 1.3.2
@@ -50,38 +50,36 @@ availability_zones   = ["us-east-1a", "us-east-1b", "us-east-1c"]
 # ============================================================================
 
 authorized_alb_cidrs = [
-  # Example: Add your authorized IPs here
-  # "203.0.113.5/32",          # Your office external IP
-  # "198.51.100.0/24",         # VPN subnet
-  # "192.0.2.0/24",            # Remote office subnet
-  "0.0.0.0/0"                  # TEMPORARY: Open to all (UPDATE BEFORE PRODUCTION!)
+  # Replace these examples with the approved office, VPN, or remote-office CIDRs.
+  "203.0.113.5/32",
+  "198.51.100.0/24"
 ]
 
 # External service connectivity
 # These should be replaced with actual IP ranges
-secureweb_egress_cidr = "0.0.0.0/0"       # TODO: Replace with secureweb.com IP range
-repository_egress_cidr = "0.0.0.0/0"      # TODO: Replace with repository.example.com IP range
+secureweb_egress_cidr  = "198.51.100.10/32" # Replace with the resolved secureweb.com range
+repository_egress_cidr = "203.0.113.10/32"  # Replace with the resolved repository.example.com range
 
 # ============================================================================
 # EC2 CONFIGURATION
 # ============================================================================
 
 # Application Server
-app_instance_type = "t3.medium"           # Instance type for app server
-app_ami_id        = ""                    # Leave empty for latest Amazon Linux 2
+app_instance_type = "t3.medium" # Instance type for app server
+app_ami_id        = ""          # Leave empty for latest Amazon Linux 2
 
 # Database Server
-db_instance_type  = "t3.medium"           # Instance type for database server
-db_ami_id         = ""                    # Leave empty for latest Amazon Linux 2
+db_instance_type = "t3.medium" # Instance type for database server
+db_ami_id        = ""          # Leave empty for latest Amazon Linux 2
 
 # ============================================================================
 # AUTO SCALING CONFIGURATION
 # For POC: Set min/max/desired = 1 (single instance)
 # ============================================================================
 
-asg_min_size           = 1                # Minimum instances
-asg_max_size           = 1                # Maximum instances
-asg_desired_capacity   = 1                # Desired instances (single for POC)
+asg_min_size         = 1 # Minimum instances
+asg_max_size         = 1 # Maximum instances
+asg_desired_capacity = 1 # Desired instances (single for POC)
 
 # ============================================================================
 # LOAD BALANCER CONFIGURATION
@@ -91,9 +89,9 @@ asg_desired_capacity   = 1                # Desired instances (single for POC)
 # Get certificate ARN from AWS Certificate Manager console:
 # AWS Console â†’ Certificate Manager â†’ Copy ARN from your certificate
 # Format: arn:aws:acm:us-east-1:123456789012:certificate/abcdef01-2345-6789-abcd-ef0123456789
-ssl_certificate_arn = ""                  # Optional: Provide your certificate ARN here
+ssl_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/REPLACE-ME" # Replace with a real ACM certificate ARN
 
-alb_internal = false                      # false = internet-facing, true = internal
+alb_internal = false # false = internet-facing, true = internal
 
 # ============================================================================
 # USER DATA SCRIPTS
@@ -103,12 +101,35 @@ alb_internal = false                      # false = internet-facing, true = inte
 # Application server user data (installs web server)
 app_user_data = <<-EOF
               #!/bin/bash
+              set -euo pipefail
+              exec > >(tee /var/log/bootstrap.log | logger -t user-data -s 2>/dev/console) 2>&1
+
+              PKG_URL="https://repository.example.com/packages/myapp.rpm"
+              PKG_FILE="/tmp/myapp.rpm"
+
+              retry() {
+                local n=0
+                local max=5
+                local delay=10
+                until "$@"; do
+                  n=$((n+1))
+                  if [ "$n" -ge "$max" ]; then
+                    echo "Command failed after $n attempts: $*"
+                    return 1
+                  fi
+                  sleep "$delay"
+                done
+              }
+
               yum update -y
-              yum install -y httpd
-              systemctl start httpd
-              systemctl enable httpd
-              echo "<h1>Payment Application Server - Dev Environment</h1>" > /var/www/html/index.html
-              echo "Instance ID: $(ec2-metadata --instance-id | cut -d' ' -f2)" >> /var/www/html/index.html
+              retry curl -fL --connect-timeout 10 --max-time 120 "$PKG_URL" -o "$PKG_FILE"
+              retry yum localinstall -y "$PKG_FILE"
+
+              # App starts only if package install succeeded
+              systemctl daemon-reload
+              systemctl enable myapp
+              systemctl start myapp
+              systemctl is-active --quiet myapp
               EOF
 
 # Database server user data (installs MySQL)
@@ -130,16 +151,16 @@ import_existing_resources = false
 # If import_existing_resources = true, provide existing resource IDs:
 # (Get these from AWS Console â†’ EC2 Dashboard â†’ Resources)
 
-existing_vpc_id              = ""          # e.g., "vpc-12345678"
-existing_public_subnet_id    = ""          # e.g., "subnet-xxxxxxx"
-existing_app_subnet_id       = ""          # e.g., "subnet-yyyyyyy"
-existing_db_subnet_id        = ""          # e.g., "subnet-zzzzzzz"
-existing_alb_sg_id           = ""          # e.g., "sg-alb-123456"
-existing_app_sg_id           = ""          # e.g., "sg-app-123456"
-existing_db_sg_id            = ""          # e.g., "sg-db-123456"
-existing_app_instance_id     = ""          # e.g., "i-app-123456789"
-existing_db_instance_id      = ""          # e.g., "i-db-123456789"
-existing_alb_arn             = ""          # e.g., "arn:aws:elasticloadbalancing:..."
+existing_vpc_id           = "" # e.g., "vpc-12345678"
+existing_public_subnet_id = "" # e.g., "subnet-xxxxxxx"
+existing_app_subnet_id    = "" # e.g., "subnet-yyyyyyy"
+existing_db_subnet_id     = "" # e.g., "subnet-zzzzzzz"
+existing_alb_sg_id        = "" # e.g., "sg-alb-123456"
+existing_app_sg_id        = "" # e.g., "sg-app-123456"
+existing_db_sg_id         = "" # e.g., "sg-db-123456"
+existing_app_instance_id  = "" # e.g., "i-app-123456789"
+existing_db_instance_id   = "" # e.g., "i-db-123456789"
+existing_alb_arn          = "" # e.g., "arn:aws:elasticloadbalancing:..."
 
 # ============================================================================
 # DEPLOYMENT INSTRUCTIONS

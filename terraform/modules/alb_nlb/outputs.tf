@@ -5,3 +5,11 @@ output "target_group_arns" {
     for k, v in aws_lb_target_group.this : k => v.arn
   }
 }
+
+output "lb_arn" {
+  value = length(aws_lb.this) > 0 ? aws_lb.this[0].arn : null
+}
+
+output "lb_zone_id" {
+  value = length(aws_lb.this) > 0 ? aws_lb.this[0].zone_id : null
+}

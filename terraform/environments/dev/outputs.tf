@@ -27,7 +27,7 @@ output "database_subnet_id" {
 
 # Security Group Outputs
 output "alb_security_group_id" {
-  value       = module.security_groups.app_sg_id
+  value       = module.security_groups.alb_sg_id
   description = "ALB security group ID"
 }
 
@@ -48,12 +48,12 @@ output "alb_dns_name" {
 }
 
 output "alb_arn" {
-  value       = try(module.load_balancer.module_name, "N/A")
+  value       = module.load_balancer.lb_arn
   description = "Module name of the Application Load Balancer"
 }
 
 output "alb_zone_id" {
-  value       = try(module.load_balancer.module_name, "N/A")
+  value       = module.load_balancer.lb_zone_id
   description = "Module name of the Application Load Balancer"
 }
 
@@ -84,17 +84,17 @@ output "pci_compliance_summary" {
   value = {
     requirement_1_3_1 = "Network segmentation: 3-tier architecture (ALB → App → DB)"
     requirement_1_3_2 = "Access control: Restricted inbound/outbound rules configured"
-    network_tiers     = {
-      public     = module.vpc.public_subnet_ids[0]
+    network_tiers = {
+      public      = module.vpc.public_subnet_ids[0]
       application = module.vpc.private_subnet_ids[0]
-      database   = module.vpc.private_subnet_ids[1]
+      database    = module.vpc.private_subnet_ids[1]
     }
     access_control = {
-      alb_allowed_sources  = var.authorized_alb_cidrs
-      secureweb_egress     = var.secureweb_egress_cidr
-      repository_egress    = var.repository_egress_cidr
-      app_to_db_port       = "3306"
-      alb_to_app_port      = "8080"
+      alb_allowed_sources = var.authorized_alb_cidrs
+      secureweb_egress    = var.secureweb_egress_cidr
+      repository_egress   = var.repository_egress_cidr
+      app_to_db_port      = "3306"
+      alb_to_app_port     = "8080"
     }
   }
   description = "PCI-DSS 1.3.1 & 1.3.2 compliance configuration summary"

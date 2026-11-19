@@ -61,6 +61,8 @@ variable "module_settings" {
     name = optional(any)
     security_group_ids = optional(any)
     subnet_ids = optional(any)
+    target_group_arn = optional(any)
+    user_data = optional(any)
   })
   description = "Module-specific settings."
   default     = {}

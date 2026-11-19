@@ -2,16 +2,16 @@
 module "common" {
   source = "../../modules/common"
 
-  company_code          = var.company_code
-  environment           = var.environment
-  region                = var.aws_region
-  owner                 = var.owner
-  cost_center           = var.cost_center
-  project               = var.project
-  company_name          = var.company_name
-  compliance_framework  = "PCI-DSS"
-  mode                  = "strict"
-  additional_tags       = var.tags
+  company_code         = var.company_code
+  environment          = var.environment
+  region               = var.aws_region
+  owner                = var.owner
+  cost_center          = var.cost_center
+  project              = var.project
+  company_name         = var.company_name
+  compliance_framework = "PCI-DSS"
+  mode                 = "strict"
+  additional_tags      = var.tags
 }
 
 # VPC Module - Network Foundation
@@ -21,13 +21,13 @@ module "vpc" {
   naming_prefix = var.naming_prefix
   tags          = var.tags
 
-  cidr_block               = var.vpc_cidr
-  azs                      = var.availability_zones
-  public_subnet_cidrs      = [var.public_subnet_cidr]
-  private_subnet_cidrs     = [var.app_subnet_cidr, var.db_subnet_cidr]
-  enable_internet_gateway  = true
-  enable_nat_gateway       = true
-  single_nat_gateway       = true
+  cidr_block              = var.vpc_cidr
+  azs                     = var.availability_zones
+  public_subnet_cidrs     = [var.public_subnet_cidr]
+  private_subnet_cidrs    = [var.app_subnet_cidr, var.db_subnet_cidr]
+  enable_internet_gateway = true
+  enable_nat_gateway      = true
+  single_nat_gateway      = true
 }
 
 # Security Groups Module - PCI-DSS 1.3.1 & 1.3.2 Compliance
@@ -39,21 +39,64 @@ module "security_groups" {
   tags          = var.tags
   vpc_id        = module.vpc.vpc_id
 
-  # ALB Security Group - Restricted inbound from authorized IPs
-  app_ingress_rules = [
+  alb_ingress_rules = flatten([
+    for cidr in var.authorized_alb_cidrs : [
+      {
+        from_port   = 80
+        to_port     = 80
+        protocol    = "tcp"
+        cidr_block  = cidr
+        description = "HTTP redirect from authorized sources"
+      },
+      {
+        from_port   = 443
+        to_port     = 443
+        protocol    = "tcp"
+        cidr_block  = cidr
+        description = "HTTPS from authorized sources"
+      }
+    ]
+  ])
+
+  app_ingress_rules = []
+
+  app_ingress_from_alb = [
     {
-      from_port   = 80
-      to_port     = 80
+      from_port   = 8080
+      to_port     = 8080
       protocol    = "tcp"
-      cidr_block  = var.public_subnet_cidr
-      description = "HTTP from ALB subnet (internal)"
+      description = "HTTP application traffic from ALB"
+    }
+  ]
+
+  app_egress_rules = [
+    {
+      from_port   = 53
+      to_port     = 53
+      protocol    = "udp"
+      cidr_block  = var.vpc_cidr
+      description = "DNS resolution through the VPC resolver"
+    },
+    {
+      from_port   = 53
+      to_port     = 53
+      protocol    = "tcp"
+      cidr_block  = var.vpc_cidr
+      description = "TCP DNS fallback through the VPC resolver"
     },
     {
       from_port   = 443
       to_port     = 443
       protocol    = "tcp"
-      cidr_block  = var.public_subnet_cidr
-      description = "HTTPS from ALB subnet (restricted access)"
+      cidr_block  = var.repository_egress_cidr
+      description = "HTTPS to repository.example.com"
+    },
+    {
+      from_port   = 443
+      to_port     = 443
+      protocol    = "tcp"
+      cidr_block  = var.secureweb_egress_cidr
+      description = "HTTPS to secureweb.com"
     }
   ]
 
@@ -72,12 +115,14 @@ module "load_balancer" {
     load_balancer_type = "application"
     internal           = var.alb_internal
     name               = "${var.naming_prefix}-alb"
-    security_group_ids = [module.security_groups.app_sg_id]
+    security_group_ids = [module.security_groups.alb_sg_id]
     subnet_ids         = [module.vpc.public_subnet_ids[0]]
     vpc_id             = module.vpc.vpc_id
+    certificate_arn    = var.ssl_certificate_arn
+    listener_port      = 443
 
-    target_groups = [
-      {
+    target_groups = {
+      app = {
         name        = "${var.naming_prefix}-tg"
         port        = 8080
         protocol    = "HTTP"
@@ -92,7 +137,7 @@ module "load_balancer" {
           matcher             = "200"
         }
       }
-    ]
+    }
   }
 }
 
@@ -105,24 +150,24 @@ module "app_server" {
 
   module_settings = {
     # Auto Scaling Configuration (Min 1, Max 1 for POC = single instance)
-    min_size             = var.asg_min_size
-    max_size             = var.asg_max_size
-    desired_capacity     = var.asg_desired_capacity
+    min_size         = var.asg_min_size
+    max_size         = var.asg_max_size
+    desired_capacity = var.asg_desired_capacity
 
     # Instance Configuration
-    instance_type        = var.app_instance_type
-    image_id             = var.app_ami_id != "" ? var.app_ami_id : data.aws_ami.amazon_linux_2.id
-    security_group_ids   = [module.security_groups.app_sg_id]
-    subnet_ids           = [module.vpc.private_subnet_ids[0]]
+    instance_type      = var.app_instance_type
+    image_id           = var.app_ami_id != "" ? var.app_ami_id : data.aws_ami.amazon_linux_2.id
+    security_group_ids = [module.security_groups.app_sg_id]
+    subnet_ids         = [module.vpc.private_subnet_ids[0]]
 
     # Naming
-    name                 = "${var.naming_prefix}-app-asg"
+    name = "${var.naming_prefix}-app-asg"
 
     # Target Group
-    target_group_arn     = module.load_balancer.target_group_arns[0]
+    target_group_arn = module.load_balancer.target_group_arns["app"]
 
     # User Data
-    user_data            = base64encode(var.app_user_data)
+    user_data = var.app_user_data
   }
 }
 
@@ -136,24 +181,24 @@ module "database_server" {
 
   module_settings = {
     # Single instance (no scaling)
-    min_size             = 1
-    max_size             = 1
-    desired_capacity     = 1
+    min_size         = 1
+    max_size         = 1
+    desired_capacity = 1
 
     # Instance Configuration
-    instance_type        = var.db_instance_type
-    image_id             = var.db_ami_id != "" ? var.db_ami_id : data.aws_ami.amazon_linux_2.id
-    security_group_ids   = [module.security_groups.db_sg_id]
-    subnet_ids           = [module.vpc.private_subnet_ids[1]]
+    instance_type      = var.db_instance_type
+    image_id           = var.db_ami_id != "" ? var.db_ami_id : data.aws_ami.amazon_linux_2.id
+    security_group_ids = [module.security_groups.db_sg_id]
+    subnet_ids         = [module.vpc.private_subnet_ids[1]]
 
     # Naming
-    name                 = "${var.naming_prefix}-db-asg"
+    name = "${var.naming_prefix}-db-asg"
 
     # No target group for database
-    target_group_arn     = ""
+    target_group_arn = ""
 
     # User Data
-    user_data            = base64encode(var.db_user_data)
+    user_data = var.db_user_data
   }
 }
 

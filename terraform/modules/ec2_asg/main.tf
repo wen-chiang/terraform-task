@@ -11,6 +11,7 @@ resource "aws_launch_template" "this" {
   instance_type = try(local.settings.instance_type, "t3.micro")
 
   vpc_security_group_ids = try(local.settings.security_group_ids, null)
+  user_data              = try(local.settings.user_data, null) != null ? base64encode(local.settings.user_data) : null
 
   tag_specifications {
     resource_type = "instance"
@@ -34,6 +35,8 @@ resource "aws_autoscaling_group" "this" {
     id      = aws_launch_template.this[0].id
     version = "$Latest"
   }
+
+  target_group_arns = try(local.settings.target_group_arn, "") != "" ? [local.settings.target_group_arn] : null
 
   tag {
     key                 = "Name"

@@ -31,6 +31,27 @@ variable "resource_name" {
 
 variable "app_ingress_rules" {
   type = list(object({
+    from_port                = number
+    to_port                  = number
+    protocol                 = string
+    cidr_block               = optional(string)
+    description              = string
+  }))
+  default = []
+}
+
+variable "app_ingress_from_alb" {
+  type = list(object({
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    description = string
+  }))
+  default = []
+}
+
+variable "alb_ingress_rules" {
+  type = list(object({
     from_port   = number
     to_port     = number
     protocol    = string
@@ -45,7 +66,7 @@ variable "app_egress_rules" {
     from_port   = number
     to_port     = number
     protocol    = string
-    cidr_block  = string
+    cidr_block  = optional(string)
     description = string
   }))
   default = [
